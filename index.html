@@ -58,17 +58,18 @@ if (window.applicationCache.status=='0'){window.location.replace("cache.html");}
 </div>
 <div id="mods-section">
 <h1 style="font-size:18px;color:yellow;">Online Payloads</h1>
+<button class="btn" onclick=load_arabicGuy100()> Arabic Guy v1.00 </button>
 <button class="btn" onclick=load_arabicGuy127()> Arabic Guy v1.27 </button>
 <button class="btn" onclick=load_arabicGuy132()> Arabic Guy v1.32 </button>
 <button class="btn" onclick=load_arabicGuy133()> Arabic Guy v1.33 </button>
+<button class="btn" onclick=load_Expulsion()> Expulsion v4.0-1.38 </button>
+<br>
 <button class="btn" onclick=load_WildeModz132()> WildeModz-1.32 v1.3 </button>
 <button class="btn" onclick=load_WildeModz133()> WildeModz-1.33 v1.3 </button>
-<button class="btn" onclick=load_WildeModz138()> WildeModz-1.38 v1.6 </button>
-<br>
+<button class="btn" onclick=load_WildeModz138()> WildeModz-1.38 v1.7 </button>
 <button class="btn" onclick=load_beefQueef133()> Beef Queef Mod v1.33 </button>
 <button class="btn" onclick=load_beefQueef134()> Beef Queef Mod v1.34 </button>
 <button class="btn" onclick=load_beefQueef138()> Beef Queef Mod v1.38d </button>
-<button class="btn" onclick=load_Expulsion()> Expulsion v3.0 </button>
 <br>
 <button class="btn" onclick=load_Oysters100()> Oysters Menu v1.00 </button>
 <button class="btn" onclick=load_Oysters113()> Oysters Menu v1.13 </button>
@@ -106,38 +107,29 @@ msgs.innerHTML = LoadedMSG
 }
 
 function load_poc(){
-var xhr = new XMLHttpRequest();
-xhr.responseType = "arraybuffer";
-xhr.open("GET",PLfile,true);
-xhr.send();
-xhr.onreadystatechange=function(){
-if (xhr.readyState == 4){
-  var tmp0 = new Uint8Array(xhr.response.byteLength);
-  tmp0.set(new Uint8Array(xhr.response), 0);
-  var payload = new Uint32Array(tmp0);
-  loadPL = payload;
-  launch_payload();
+ var req = new XMLHttpRequest();
+ req.responseType = "arraybuffer";
+ req.open('GET', PLfile);
+ req.send();
+ req.onreadystatechange = function () {
+  if (req.readyState == 4) {
+   PLD = req.response;
+   var payload_buffer = chain.syscall(477, 0, PLD.byteLength*4 , 7, 0x1002, -1, 0);
+   var pl = p.array_from_address(payload_buffer, PLD.byteLength*4);
+   var padding = new Uint8Array(4 - (req.response.byteLength % 4) % 4);
+   var tmp = new Uint8Array(req.response.byteLength + padding.byteLength);
+   tmp.set(new Uint8Array(req.response), 0);
+   tmp.set(padding, req.response.byteLength);
+   var shellcode = new Uint32Array(tmp.buffer);
+   pl.set(shellcode,0);
+   var pthread = p.malloc(0x10);
+   chain.call(libKernelBase.add32(OFFSET_lk_pthread_create), pthread, 0x0, payload_buffer, 0);
+   allset();
   }
-};
+ };
 }
 
-function launch_payload(){
-	if (exec_loader == "payload"){
-        var payload_buffer = chain.syscall(477, 0, loadPL.length, 7, 0x1002, -1, 0);
-        var buf = new Uint8Array(1);
-        var buf_addr = p.leakval(buf);
-        var old_buf = p.read8(buf_addr.add32(16));
-        var old_sz = p.read4(buf_addr.add32(24));
-        p.write8(buf_addr.add32(16), payload_buffer);
-        p.write4(buf_addr.add32(24), loadPL.length);
-        for(var i = 0; i < loadPL.length; i++) buf[i] = loadPL[i];
-        p.write8(buf_addr.add32(16), old_buf);
-        p.write4(buf_addr.add32(24), old_sz);
-        var pthread = p.malloc(0x10);
-        chain.call(libKernelBase.add32(OFFSET_lk_pthread_create), pthread, 0x0, payload_buffer, 0);
-		allset();
-    }
-else if (exec_loader == "binloader"){
+function load_binloader(){
     var payload_buffer = chain.syscall(477, 0x0, 0x300000, 0x7, 0x1000, 0xFFFFFFFF, 0);
     var payload_loader = p.malloc32(0x1000);
     
@@ -212,10 +204,11 @@ else if (exec_loader == "binloader"){
         chain.fcall(libKernelBase.add32(OFFSET_lk_pthread_create), pthread, 0x0, payload_loader, payload_buffer);
     }
     chain.run();
+	LoadedMSG = "Bin Loader Launched ...";
 	alert("Waiting for Payload... Send it using the PS4 IP and port 9020");
 	allset();
+	load_poc();
 	}
-}
 
 function loadScript(path)
 {
@@ -288,167 +281,145 @@ eval.call(window, loadScript('netcat.js')
 function load_goldhen22(){
 LoadedMSG = "GoldHEN v2.2 Loaded ...";
 PLfile = "goldhen_2.2.bin";
-exec_loader = "payload";
 load_poc();
-}
-
-function load_binloader(){
-LoadedMSG = "Bin Loader Launched ...";
-exec_loader = "binloader";
-launch_payload();
 }
 
 function load_Gdumper(){
 LoadedMSG = "Game-Dumper Loaded ...";
 PLfile = "dumperG.bin";
-exec_loader = "payload";
 load_poc();
 }
 
 function load_Udumper(){
 LoadedMSG = "Update-Dumper Loaded ...";
 PLfile = "dumperU.bin";
-exec_loader = "payload";
 load_poc();
 }
 
 function load_SGUdumper(){
 LoadedMSG = "Separate Game and Update Dumper Loaded ...";
 PLfile = "dumperSGU.bin";
-exec_loader = "payload";
 load_poc();
 }
 
 function load_MGUdumper(){
 LoadedMSG = "Merged Game and Update Dumper Loaded ...";
 PLfile = "dumperMGU.bin";
-exec_loader = "payload";
 load_poc();
 }
 
 function load_todex(){
 LoadedMSG = "ToDex Loaded ...";
 PLfile = "todex.bin";
-exec_loader = "payload";
 load_poc();
 }
 
 function load_ftp(){
 LoadedMSG = "FTP Loaded ..."
 PLfile = "ftp.bin";
-exec_loader = "payload";
 load_poc();
 }
 
 function load_app2usb(){
 LoadedMSG = "App2USB Loaded ..."
 PLfile = "app2usb.bin";
-exec_loader = "payload";
 load_poc();
 }
 
 function load_dbackup(){
 LoadedMSG = "DB Backup Loaded ..."
 PLfile = "backup.bin";
-exec_loader = "payload";
 load_poc();
 }
 
 function load_dbrestore(){
 LoadedMSG = "DB Restore Loaded ..."
 PLfile = "restore.bin";
-exec_loader = "payload";
 load_poc();
 }
 
 function load_enablebUpdates(){
 LoadedMSG = "Enable Updates Loaded ..."
 PLfile = "restore.bin";
-exec_loader = "payload";
 load_poc();
 }
 
 function load_disableUpdates(){
 LoadedMSG = "Disable Updates Loaded ..."
 PLfile = "disable-updates.bin";
-exec_loader = "payload";
 load_poc();
 }
 
 function load_historyBlocker(){
 LoadedMSG = "History Blocker Loaded ..."
 PLfile = "history-blocker.bin";
-exec_loader = "payload";
 load_poc();
 }
 
 function load_kernelDump(){
 LoadedMSG = "Kernel Dumper Loaded ..."
 PLfile = "kernel-dumper.bin";
-exec_loader = "payload";
 load_poc();
 }
 
 function load_moduleDump(){
 LoadedMSG = "Module Dumper Loaded ..."
 PLfile = "module-dumper.bin";
-exec_loader = "payload";
 load_poc();
 }
 
 function load_ps4debug(){
 LoadedMSG = "PS4 Debug Loaded ..."
 PLfile = "ps4debug.bin";
-exec_loader = "payload";
 load_poc();
 }
 
 function load_disbAslr(){
 LoadedMSG = "Disable ASLR Loaded ..."
 PLfile = "disable-aslr.bin";
-exec_loader = "payload";
 load_poc();
 }
 
 function load_exitidu(){
 LoadedMSG = "Exit IDU Loaded ..."
 PLfile = "exit-idu.bin";
-exec_loader = "payload";
 load_poc();
 }
 
 function load_rifRen(){
 LoadedMSG = "RIF Renamer Loaded ..."
 PLfile = "rif-renamer.bin";
-exec_loader = "payload";
 load_poc();
 }
 
 function load_permUart(){
 LoadedMSG = "Permanent UART Loaded ..."
 PLfile = "permanent-uart.bin";
-exec_loader = "payload";
 load_poc();
 }
 
 function load_webrte(){
 LoadedMSG = "WebRTE Loaded ..."
 PLfile = "webrte.bin";
-exec_loader = "payload";
 load_poc();
 }
 
 function load_toolbox(){
 LoadedMSG = "Orbis-Toolbox Loaded ..."
 PLfile = "Orbis-Toolbox-900.bin";
-exec_loader = "payload";
 load_poc();
 }
 
 function load_fanthreshold(){
 LoadedMSG="Fan Threshold Loaded ..."
 PLfile = "fan-threshold"+tempC.value+".bin";
-exec_loader = "payload";
+load_poc();
+}
+
+function load_arabicGuy100(){
+msgs.innerHTML="Loading... Please Wait";
+LoadedMSG = "Arabic Guy v1.27 Loaded ..."
+PLfile = "arabic-guy100.bin";
 load_poc();
 }
 
@@ -456,7 +427,6 @@ function load_arabicGuy127(){
 msgs.innerHTML="Loading... Please Wait";
 LoadedMSG = "Arabic Guy v1.27 Loaded ..."
 PLfile = "arabic-guy127.bin";
-exec_loader = "payload";
 load_poc();
 }
 
@@ -472,7 +442,13 @@ function load_arabicGuy133(){
 msgs.innerHTML="Loading... Please Wait";
 LoadedMSG = "Arabic Guy v1.33 Loaded ..."
 PLfile = "arabic-guy133.bin";
-exec_loader = "payload";
+load_poc();
+}
+
+function load_Expulsion(){
+msgs.innerHTML="Loading... Please Wait";
+LoadedMSG = "Expulsion v4.0 Loaded ..."
+PLfile = "Expulsion-V4.0-1.38.bin";
 load_poc();
 }
 
@@ -480,7 +456,6 @@ function load_WildeModz132(){
 msgs.innerHTML="Loading... Please Wait";
 LoadedMSG = "WildeModz-1.32 v1.3 Loaded ..."
 PLfile = "WildeModz-1.32-1.3.bin";
-exec_loader = "payload";
 load_poc();
 }
 
@@ -488,15 +463,13 @@ function load_WildeModz133(){
 msgs.innerHTML="Loading... Please Wait";
 LoadedMSG = "WildeModz-1.33 v1.3 Loaded ..."
 PLfile = "WildeModz-1.33-1.3.bin";
-exec_loader = "payload";
 load_poc();
 }
 
 function load_WildeModz138(){
 msgs.innerHTML="Loading... Please Wait";
-LoadedMSG = "WildeModz-1.38 v1.6 Loaded ..."
-PLfile = "WildeModz-1.38-1.6.bin";
-exec_loader = "payload";
+LoadedMSG = "WildeModz-1.38 v1.7 Loaded ..."
+PLfile = "WildeModz-1.38-1.7.bin";
 load_poc();
 }
 
@@ -504,7 +477,6 @@ function load_beefQueef133(){
 msgs.innerHTML="Loading... Please Wait";
 LoadedMSG = "Beef Queef Mod v1.33 Loaded ..."
 PLfile = "BeefQueefMod-133.bin";
-exec_loader = "payload";
 load_poc();
 }
 
@@ -512,7 +484,6 @@ function load_beefQueef134(){
 msgs.innerHTML="Loading... Please Wait";
 LoadedMSG = "Beef Queef Mod v1.34 Loaded ..."
 PLfile = "BeefQueefMod-134.bin";
-exec_loader = "payload";
 load_poc();
 }
 
@@ -520,15 +491,6 @@ function load_beefQueef138(){
 msgs.innerHTML="Loading... Please Wait";
 LoadedMSG = "Beef Queef Mod v1.38d Loaded ..."
 PLfile = "BeefQueefMod-138d.bin";
-exec_loader = "payload";
-load_poc();
-}
-
-function load_Expulsion(){
-msgs.innerHTML="Loading... Please Wait";
-LoadedMSG = "Expulsion v3.0 Loaded ..."
-PLfile = "Expulsion-v3.0.bin";
-exec_loader = "payload";
 load_poc();
 }
 
@@ -536,7 +498,6 @@ function load_Oysters100(){
 msgs.innerHTML="Loading... Please Wait";
 LoadedMSG = "Oysters Menu v1.00 Loaded ..."
 PLfile = "OystersMenu-v1.3.5-1.00.bin";
-exec_loader = "payload";
 load_poc();
 }
 
@@ -544,7 +505,6 @@ function load_Oysters113(){
 msgs.innerHTML="Loading... Please Wait";
 LoadedMSG = "Oysters Menu v1.13 Loaded ..."
 PLfile = "OystersMenu-v1.3.5-1.13.bin";
-exec_loader = "payload";
 load_poc();
 }
 
@@ -552,7 +512,6 @@ function load_Oysters119(){
 msgs.innerHTML="Loading... Please Wait";
 LoadedMSG = "Oysters Menu v1.19 Loaded ..."
 PLfile = "OystersMenu-v1.3.5-1.19.bin";
-exec_loader = "payload";
 load_poc();
 }
 
@@ -560,7 +519,6 @@ function load_Oysters124(){
 msgs.innerHTML="Loading... Please Wait";
 LoadedMSG = "Oysters Menu v1.24 Loaded ..."
 PLfile = "OystersMenu-v1.3.5-1.24.bin";
-exec_loader = "payload";
 load_poc();
 }
 
@@ -568,7 +526,6 @@ function load_Oysters129(){
 msgs.innerHTML="Loading... Please Wait";
 LoadedMSG = "Oysters Menu v1.29 Loaded ..."
 PLfile = "OystersMenu-v1.3.5-1.29.bin";
-exec_loader = "payload";
 load_poc();
 }
 </script>
